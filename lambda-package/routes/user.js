@@ -6,20 +6,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const User_1 = require("../models/User");
-const auth_1 = require("../middleware/auth");
 const router = express_1.default.Router();
 // Update user profile
-router.put('/profile', auth_1.authenticateToken, async (req, res) => {
+router.put('/profile', async (req, res) => {
     try {
-        const { userId } = req.user;
-        const { username } = req.body;
+        const { currentUsername, username } = req.body;
         // Check if username is already taken by another user
         const existingUser = await User_1.UserModel.findByUsername(username);
-        if (existingUser && existingUser.userId !== userId) {
+        if (existingUser && existingUser.username !== currentUsername) {
             return res.status(400).json({ message: 'Username already taken' });
         }
         // Update username
-        const user = await User_1.UserModel.findById(userId);
+        const user = await User_1.UserModel.findByUsername(currentUsername);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -39,11 +37,10 @@ router.put('/profile', auth_1.authenticateToken, async (req, res) => {
     }
 });
 // Change password
-router.put('/password', auth_1.authenticateToken, async (req, res) => {
+router.put('/password', async (req, res) => {
     try {
-        const { userId } = req.user;
-        const { currentPassword, newPassword } = req.body;
-        const user = await User_1.UserModel.findById(userId);
+        const { username, currentPassword, newPassword } = req.body;
+        const user = await User_1.UserModel.findByUsername(username);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -63,21 +60,20 @@ router.put('/password', auth_1.authenticateToken, async (req, res) => {
     }
 });
 // Purchase balance
-router.post('/purchase-balance', auth_1.authenticateToken, async (req, res) => {
+router.post('/purchase-balance', async (req, res) => {
     try {
-        const { userId } = req.user;
-        const { amount } = req.body;
+        const { username, amount } = req.body;
         if (!amount || amount <= 0) {
             return res.status(400).json({ message: 'Invalid amount' });
         }
-        const user = await User_1.UserModel.findById(userId);
+        const user = await User_1.UserModel.findByUsername(username);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
         // Add the balance
         const currentBalance = user.balance !== undefined ? user.balance : 100;
         const newBalance = currentBalance + amount;
-        await User_1.UserModel.updateBalance(userId, newBalance);
+        await User_1.UserModel.updateBalance(user.userId, newBalance);
         res.json({
             message: 'Balance purchased successfully',
             newBalance
@@ -88,10 +84,10 @@ router.post('/purchase-balance', auth_1.authenticateToken, async (req, res) => {
     }
 });
 // Get user balance
-router.get('/balance', auth_1.authenticateToken, async (req, res) => {
+router.get('/balance/:username', async (req, res) => {
     try {
-        const { userId } = req.user;
-        const user = await User_1.UserModel.findById(userId);
+        const { username } = req.params;
+        const user = await User_1.UserModel.findByUsername(username);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
