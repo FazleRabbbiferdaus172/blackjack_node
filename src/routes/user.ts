@@ -1,5 +1,6 @@
 import express from 'express';
-import mockDb from '../services/mockDb';
+import bcrypt from 'bcryptjs';
+import { UserModel } from '../models/User';
 import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
@@ -17,22 +18,25 @@ router.put('/profile', authenticateToken, async (req: AuthRequest, res) => {
         const { username } = req.body;
 
         // Check if username is already taken by another user
-        const existingUser = await mockDb.findOne({ username });
-        if (existingUser && existingUser._id !== userId) {
+        const existingUser = await UserModel.findByUsername(username);
+        if (existingUser && existingUser.userId !== userId) {
             return res.status(400).json({ message: 'Username already taken' });
         }
 
-        const updatedUser = await mockDb.findByIdAndUpdate(userId, { username });
-        if (!updatedUser) {
+        // Update username
+        const user = await UserModel.findById(userId);
+        if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
+        user.username = username;
+        await UserModel.create(user); // Overwrite user with new username
 
         res.json({
             user: {
-                id: updatedUser._id,
-                username: updatedUser.username,
-                wins: updatedUser.wins,
-                gamesPlayed: updatedUser.gamesPlayed
+                id: user.userId,
+                username: user.username,
+                gamesWon: user.gamesWon,
+                gamesPlayed: user.gamesPlayed
             }
         });
     } catch (error) {
@@ -46,19 +50,21 @@ router.put('/password', authenticateToken, async (req: AuthRequest, res) => {
         const { userId } = req.user!;
         const { currentPassword, newPassword } = req.body;
 
-        const user = await mockDb.findOne({ _id: userId });
+        const user = await UserModel.findById(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
         // Check current password
-        const isMatch = await user.comparePassword(currentPassword);
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
         if (!isMatch) {
             return res.status(400).json({ message: 'Current password is incorrect' });
         }
 
-        // Update password (in a real app, we would hash this)
-        await mockDb.findByIdAndUpdate(userId, { password: newPassword });
+        // Update password (hash it)
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+        await UserModel.create(user); // Overwrite user with new password
 
         res.json({ message: 'Password updated successfully' });
     } catch (error) {
@@ -76,16 +82,15 @@ router.post('/purchase-balance', authenticateToken, async (req: AuthRequest, res
             return res.status(400).json({ message: 'Invalid amount' });
         }
 
-        const user = await mockDb.findOne({ _id: userId });
+        const user = await UserModel.findById(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // In a real app, you would process payment here
-        // For now, we'll just add the balance
-        const currentBalance = user.balance !== undefined ? user.balance : 1000;
+        // Add the balance
+        const currentBalance = user.balance !== undefined ? user.balance : 100;
         const newBalance = currentBalance + amount;
-        await mockDb.findByIdAndUpdate(userId, { balance: newBalance });
+        await UserModel.updateBalance(userId, newBalance);
 
         res.json({
             message: 'Balance purchased successfully',
@@ -101,13 +106,13 @@ router.get('/balance', authenticateToken, async (req: AuthRequest, res) => {
     try {
         const { userId } = req.user!;
 
-        const user = await mockDb.findOne({ _id: userId });
+        const user = await UserModel.findById(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
         res.json({
-            balance: user.balance || 1000
+            balance: user.balance || 100
         });
     } catch (error) {
         res.status(500).json({ message: 'Error fetching balance' });

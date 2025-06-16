@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.mockDb = void 0;
 class MockDb {
     constructor() {
         this.users = new Map();
@@ -8,9 +9,6 @@ class MockDb {
     async findOne(query) {
         for (const user of this.users.values()) {
             if (query.username && user.username === query.username) {
-                return user;
-            }
-            if (query._id && user._id === query._id) {
                 return user;
             }
         }
@@ -31,26 +29,23 @@ class MockDb {
                 return sort[sortKey] * (aValue < bValue ? -1 : aValue > bValue ? 1 : 0);
             });
         }
-        // Apply limit
         return results.slice(0, limit);
     }
     async create(userData) {
-        const id = this.nextId.toString();
+        const timestamp = new Date().toISOString();
+        const userId = `user_${this.nextId}`;
         this.nextId++;
         const user = {
-            _id: id,
+            userId,
             username: userData.username,
             password: userData.password,
-            wins: userData.wins || 0,
-            gamesPlayed: userData.gamesPlayed || 0,
-            balance: userData.balance || 100,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            comparePassword: async (candidatePassword) => {
-                return userData.password === candidatePassword;
-            }
+            balance: userData.balance || 1000,
+            gamesPlayed: 0,
+            gamesWon: 0,
+            createdAt: timestamp,
+            updatedAt: timestamp
         };
-        this.users.set(id, user);
+        this.users.set(userId, user);
         return user;
     }
     async findByIdAndUpdate(id, update) {
@@ -60,12 +55,10 @@ class MockDb {
         const updatedUser = {
             ...user,
             ...update,
-            updatedAt: new Date()
+            updatedAt: new Date().toISOString()
         };
         this.users.set(id, updatedUser);
         return updatedUser;
     }
 }
-// Create a singleton instance
-const mockDb = new MockDb();
-exports.default = mockDb;
+exports.mockDb = new MockDb();

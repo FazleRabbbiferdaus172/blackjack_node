@@ -1,30 +1,30 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth';
-import mockDb from '../services/mockDb';
+import { UserModel } from '../models/User';
 
 const router = express.Router();
 
 // Record game result and update user stats
 router.post('/result', authenticateToken, async (req: any, res) => {
     try {
-        const { result, bet, playerScore, dealerScore } = req.body;
+        const { result, bet } = req.body;
         const userId = req.user.userId;
 
         // Find user
-        const user = await mockDb.findOne({ _id: userId });
+        const user = await UserModel.findById(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Calculate new balance
+        // Calculate new balance and stats
         let newBalance = user.balance;
-        let newWins = user.wins;
+        let newGamesWon = user.gamesWon;
         let newGamesPlayed = user.gamesPlayed + 1;
 
         switch (result) {
             case 'win':
                 newBalance += bet;
-                newWins += 1;
+                newGamesWon += 1;
                 break;
             case 'loss':
                 newBalance -= bet;
@@ -40,19 +40,12 @@ router.post('/result', authenticateToken, async (req: any, res) => {
         newBalance = Math.max(0, newBalance);
 
         // Update user in database
-        const updatedUser = await mockDb.findByIdAndUpdate(userId, {
-            balance: newBalance,
-            wins: newWins,
-            gamesPlayed: newGamesPlayed
-        });
-
-        if (!updatedUser) {
-            return res.status(500).json({ message: 'Failed to update user' });
-        }
+        await UserModel.updateBalance(userId, newBalance);
+        await UserModel.updateStats(userId, result === 'win');
 
         res.json({
             newBalance,
-            wins: newWins,
+            gamesWon: newGamesWon,
             gamesPlayed: newGamesPlayed
         });
     } catch (error) {

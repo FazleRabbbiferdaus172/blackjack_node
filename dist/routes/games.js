@@ -5,26 +5,26 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const auth_1 = require("../middleware/auth");
-const mockDb_1 = __importDefault(require("../services/mockDb"));
+const User_1 = require("../models/User");
 const router = express_1.default.Router();
 // Record game result and update user stats
 router.post('/result', auth_1.authenticateToken, async (req, res) => {
     try {
-        const { result, bet, playerScore, dealerScore } = req.body;
+        const { result, bet } = req.body;
         const userId = req.user.userId;
         // Find user
-        const user = await mockDb_1.default.findOne({ _id: userId });
+        const user = await User_1.UserModel.findById(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-        // Calculate new balance
+        // Calculate new balance and stats
         let newBalance = user.balance;
-        let newWins = user.wins;
+        let newGamesWon = user.gamesWon;
         let newGamesPlayed = user.gamesPlayed + 1;
         switch (result) {
             case 'win':
                 newBalance += bet;
-                newWins += 1;
+                newGamesWon += 1;
                 break;
             case 'loss':
                 newBalance -= bet;
@@ -38,17 +38,11 @@ router.post('/result', auth_1.authenticateToken, async (req, res) => {
         // Ensure balance doesn't go negative
         newBalance = Math.max(0, newBalance);
         // Update user in database
-        const updatedUser = await mockDb_1.default.findByIdAndUpdate(userId, {
-            balance: newBalance,
-            wins: newWins,
-            gamesPlayed: newGamesPlayed
-        });
-        if (!updatedUser) {
-            return res.status(500).json({ message: 'Failed to update user' });
-        }
+        await User_1.UserModel.updateBalance(userId, newBalance);
+        await User_1.UserModel.updateStats(userId, result === 'win');
         res.json({
             newBalance,
-            wins: newWins,
+            gamesWon: newGamesWon,
             gamesPlayed: newGamesPlayed
         });
     }

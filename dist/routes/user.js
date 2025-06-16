@@ -4,7 +4,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const mockDb_1 = __importDefault(require("../services/mockDb"));
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const User_1 = require("../models/User");
 const auth_1 = require("../middleware/auth");
 const router = express_1.default.Router();
 // Update user profile
@@ -13,20 +14,23 @@ router.put('/profile', auth_1.authenticateToken, async (req, res) => {
         const { userId } = req.user;
         const { username } = req.body;
         // Check if username is already taken by another user
-        const existingUser = await mockDb_1.default.findOne({ username });
-        if (existingUser && existingUser._id !== userId) {
+        const existingUser = await User_1.UserModel.findByUsername(username);
+        if (existingUser && existingUser.userId !== userId) {
             return res.status(400).json({ message: 'Username already taken' });
         }
-        const updatedUser = await mockDb_1.default.findByIdAndUpdate(userId, { username });
-        if (!updatedUser) {
+        // Update username
+        const user = await User_1.UserModel.findById(userId);
+        if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
+        user.username = username;
+        await User_1.UserModel.create(user); // Overwrite user with new username
         res.json({
             user: {
-                id: updatedUser._id,
-                username: updatedUser.username,
-                wins: updatedUser.wins,
-                gamesPlayed: updatedUser.gamesPlayed
+                id: user.userId,
+                username: user.username,
+                gamesWon: user.gamesWon,
+                gamesPlayed: user.gamesPlayed
             }
         });
     }
@@ -39,17 +43,19 @@ router.put('/password', auth_1.authenticateToken, async (req, res) => {
     try {
         const { userId } = req.user;
         const { currentPassword, newPassword } = req.body;
-        const user = await mockDb_1.default.findOne({ _id: userId });
+        const user = await User_1.UserModel.findById(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
         // Check current password
-        const isMatch = await user.comparePassword(currentPassword);
+        const isMatch = await bcryptjs_1.default.compare(currentPassword, user.password);
         if (!isMatch) {
             return res.status(400).json({ message: 'Current password is incorrect' });
         }
-        // Update password (in a real app, we would hash this)
-        await mockDb_1.default.findByIdAndUpdate(userId, { password: newPassword });
+        // Update password (hash it)
+        const hashedPassword = await bcryptjs_1.default.hash(newPassword, 10);
+        user.password = hashedPassword;
+        await User_1.UserModel.create(user); // Overwrite user with new password
         res.json({ message: 'Password updated successfully' });
     }
     catch (error) {
@@ -64,14 +70,14 @@ router.post('/purchase-balance', auth_1.authenticateToken, async (req, res) => {
         if (!amount || amount <= 0) {
             return res.status(400).json({ message: 'Invalid amount' });
         }
-        const user = await mockDb_1.default.findOne({ _id: userId });
+        const user = await User_1.UserModel.findById(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-        // In a real app, you would process payment here
-        // For now, we'll just add the balance
-        const newBalance = (user.balance || 1000) + amount;
-        await mockDb_1.default.findByIdAndUpdate(userId, { balance: newBalance });
+        // Add the balance
+        const currentBalance = user.balance !== undefined ? user.balance : 100;
+        const newBalance = currentBalance + amount;
+        await User_1.UserModel.updateBalance(userId, newBalance);
         res.json({
             message: 'Balance purchased successfully',
             newBalance
@@ -85,12 +91,12 @@ router.post('/purchase-balance', auth_1.authenticateToken, async (req, res) => {
 router.get('/balance', auth_1.authenticateToken, async (req, res) => {
     try {
         const { userId } = req.user;
-        const user = await mockDb_1.default.findOne({ _id: userId });
+        const user = await User_1.UserModel.findById(userId);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
         res.json({
-            balance: user.balance || 1000
+            balance: user.balance || 100
         });
     }
     catch (error) {

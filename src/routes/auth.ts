@@ -1,40 +1,41 @@
 import express from 'express';
-import jwt from 'jsonwebtoken';
-import { User } from '../models/User';
-import mockDb from '../services/mockDb';
+import { CognitoService } from '../services/cognito';
+import { UserModel } from '../models/User';
 
 const router = express.Router();
 
 // Register new user
 router.post('/register', async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const { username, password, email } = req.body;
 
-        // Check if user already exists
-        const existingUser = await mockDb.findOne({ username });
+        // Check if user already exists in DynamoDB
+        const existingUser = await UserModel.findByUsername(username);
         if (existingUser) {
             return res.status(400).json({ message: 'Username already exists' });
         }
 
-        // Create new user
-        const user = await mockDb.create({
+        // Sign up with Cognito
+        const signUpResult = await CognitoService.signUp(username, password, email);
+        if (!signUpResult.success) {
+            return res.status(400).json({ message: signUpResult.error });
+        }
+
+        // Create user in DynamoDB
+        const user = await UserModel.create({
             username,
-            password, // In a real app, we would hash this
+            password: '', // We don't store passwords in DynamoDB anymore
+            balance: 100,
+            gamesPlayed: 0,
+            gamesWon: 0
         });
 
-        // Generate JWT token
-        const token = jwt.sign(
-            { userId: user._id },
-            process.env.JWT_SECRET || 'your-secret-key',
-            { expiresIn: '24h' }
-        );
-
         res.status(201).json({
-            token,
+            message: 'User registered successfully. Please check your email for verification code.',
             user: {
-                id: user._id,
+                id: user.userId,
                 username: user.username,
-                wins: user.wins,
+                gamesWon: user.gamesWon,
                 gamesPlayed: user.gamesPlayed,
                 balance: user.balance
             }
@@ -44,36 +45,45 @@ router.post('/register', async (req, res) => {
     }
 });
 
+// Confirm registration
+router.post('/confirm', async (req, res) => {
+    try {
+        const { username, code } = req.body;
+
+        const result = await CognitoService.confirmSignUp(username, code);
+        if (!result.success) {
+            return res.status(400).json({ message: result.error });
+        }
+
+        res.json({ message: 'User confirmed successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Error confirming user' });
+    }
+});
+
 // Login user
 router.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
 
-        // Find user
-        const user = await mockDb.findOne({ username });
+        // Find user in DynamoDB
+        const user = await UserModel.findByUsername(username);
         if (!user) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        // Check password
-        const isMatch = await user.comparePassword(password);
-        if (!isMatch) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+        // Sign in with Cognito
+        const signInResult = await CognitoService.signIn(username, password);
+        if (!signInResult.success) {
+            return res.status(401).json({ message: signInResult.error });
         }
 
-        // Generate JWT token
-        const token = jwt.sign(
-            { userId: user._id },
-            process.env.JWT_SECRET || 'your-secret-key',
-            { expiresIn: '24h' }
-        );
-
         res.json({
-            token,
+            tokens: signInResult.tokens,
             user: {
-                id: user._id,
+                id: user.userId,
                 username: user.username,
-                wins: user.wins,
+                gamesWon: user.gamesWon,
                 gamesPlayed: user.gamesPlayed,
                 balance: user.balance
             }
