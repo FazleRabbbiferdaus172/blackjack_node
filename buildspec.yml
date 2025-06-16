@@ -32,7 +32,7 @@ phases:
     commands:
       - echo Post-build phase started on `date`
       - echo Updating Lambda function...
-      - aws lambda update-function-code --function-name blackjack-api --zip-file fileb://lambda-deployment.zip
+      - aws lambda update-function-code --function-name blackjack-node-app --zip-file fileb://lambda-deployment.zip --region us-east-2
       - echo Lambda function updated successfully
       - echo Build completed on `date`
 

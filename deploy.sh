@@ -33,10 +33,10 @@ echo "📊 Package size: $(du -h lambda-deployment.zip | cut -f1)"
 # Update Lambda function
 echo "☁️ Updating Lambda function..."
 aws lambda update-function-code \
-    --function-name blackjack-api \
+    --function-name blackjack-node-app \
     --zip-file fileb://lambda-deployment.zip \
     --region us-east-2
 
 echo "✅ Deployment completed successfully!"
-echo "🎯 Function: blackjack-api"
+echo "🎯 Function: blackjack-node-app"
 echo "�� Region: us-east-2" 
