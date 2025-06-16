@@ -1,3 +1,4 @@
+import serverless from 'serverless-http';
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth';
@@ -21,18 +22,12 @@ app.get('/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
-// AWS Lambda handler
-export const handler = (event: any, context: any) => {
-    console.log('Lambda invoked with event:', JSON.stringify(event, null, 2));
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+    const PORT = process.env.PORT || 3001;
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+    });
+}
 
-    // For API Gateway events
-    if (event.httpMethod) {
-        const serverlessExpress = require('@vendia/serverless-express');
-        return serverlessExpress({ app })(event, context);
-    }
-
-    return {
-        statusCode: 200,
-        body: JSON.stringify({ message: 'Lambda function is running' })
-    };
-};
+export const handler = serverless(app);
