@@ -1,25 +1,29 @@
 import serverless from 'serverless-http';
 import express from 'express';
 import cors from 'cors';
+import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
+import leaderboardRoutes from './routes/leaderboard';
 import gameRoutes from './routes/games';
 import userRoutes from './routes/user';
-import leaderboardRoutes from './routes/leaderboard';
+
+dotenv.config();
 
 const app = express();
 
-// Force new deployment - authentication removed from routes
+// Middleware
 app.use(cors());
 app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/games', gameRoutes);
 app.use('/api/user', userRoutes);
-app.use('/api/leaderboard', leaderboardRoutes);
 
+// Health check endpoint
 app.get('/health', (req, res) => {
-    res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+    res.status(200).json({ status: 'ok' });
 });
 
 // For local development
