@@ -1,4 +1,4 @@
-import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GetUserCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { CognitoIdentityProviderClient, SignUpCommand, InitiateAuthCommand, ConfirmSignUpCommand, GetUserCommand, AdminConfirmSignUpCommand } from '@aws-sdk/client-cognito-identity-provider';
 
 const cognitoClient = new CognitoIdentityProviderClient({
     region: process.env.AWS_REGION || 'us-east-2'
@@ -57,6 +57,25 @@ export const CognitoService = {
             await cognitoClient.send(command);
             return { success: true };
         } catch (error: any) {
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    },
+
+    async adminConfirmSignUp(username: string) {
+        const command = new AdminConfirmSignUpCommand({
+            UserPoolId: USER_POOL_ID,
+            Username: username
+        });
+
+        try {
+            await cognitoClient.send(command);
+            console.log('User auto-confirmed:', username);
+            return { success: true };
+        } catch (error: any) {
+            console.error('Admin confirm error:', error.message);
             return {
                 success: false,
                 error: error.message

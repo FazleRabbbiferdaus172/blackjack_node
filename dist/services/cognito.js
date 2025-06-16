@@ -60,6 +60,24 @@ exports.CognitoService = {
             };
         }
     },
+    async adminConfirmSignUp(username) {
+        const command = new client_cognito_identity_provider_1.AdminConfirmSignUpCommand({
+            UserPoolId: USER_POOL_ID,
+            Username: username
+        });
+        try {
+            await cognitoClient.send(command);
+            console.log('User auto-confirmed:', username);
+            return { success: true };
+        }
+        catch (error) {
+            console.error('Admin confirm error:', error.message);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    },
     async signIn(username, password) {
         var _a, _b, _c;
         const command = new client_cognito_identity_provider_1.InitiateAuthCommand({

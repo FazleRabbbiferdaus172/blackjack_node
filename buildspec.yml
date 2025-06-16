@@ -1,0 +1,46 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      - echo Build started on `date`
+      - echo Installing dependencies...
+      - npm ci
+
+  pre_build:
+    commands:
+      - echo Pre-build phase started on `date`
+      - echo Setting up environment variables
+
+  build:
+    commands:
+      - echo Build phase started on `date`
+      - echo Compiling TypeScript...
+      - npm run build
+      - echo Creating deployment package...
+      - mkdir -p lambda-package
+      - cp -r dist/* lambda-package/
+      - cp -r node_modules lambda-package/
+      - cd lambda-package
+      - zip -r ../lambda-deployment.zip .
+      - cd ..
+      - echo Deployment package created successfully
+
+  post_build:
+    commands:
+      - echo Post-build phase started on `date`
+      - echo Updating Lambda function...
+      - aws lambda update-function-code --function-name blackjack-api --zip-file fileb://lambda-deployment.zip
+      - echo Lambda function updated successfully
+      - echo Build completed on `date`
+
+artifacts:
+  files:
+    - lambda-deployment.zip
+  name: blackjack-backend-$(date +%Y-%m-%d-%H-%M-%S)
+
+cache:
+  paths:
+    - "node_modules/**/*"

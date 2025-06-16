@@ -21,6 +21,12 @@ router.post('/register', async (req, res) => {
         if (!signUpResult.success) {
             return res.status(400).json({ message: signUpResult.error });
         }
+        // Auto-confirm the user
+        const confirmResult = await cognito_1.CognitoService.adminConfirmSignUp(username);
+        if (!confirmResult.success) {
+            console.error('Failed to auto-confirm user:', confirmResult.error);
+            // Continue with registration even if auto-confirm fails
+        }
         // Create user in DynamoDB
         const user = await User_1.UserModel.create({
             username,
@@ -30,7 +36,7 @@ router.post('/register', async (req, res) => {
             gamesWon: 0
         });
         res.status(201).json({
-            message: 'User registered successfully. Please check your email for verification code.',
+            message: 'User registered successfully and confirmed.',
             user: {
                 id: user.userId,
                 username: user.username,
