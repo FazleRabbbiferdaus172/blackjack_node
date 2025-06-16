@@ -11,9 +11,9 @@ const router = express_1.default.Router();
 router.post('/result', auth_1.authenticateToken, async (req, res) => {
     try {
         const { result, bet } = req.body;
-        const userId = req.user.userId;
-        // Find user
-        const user = await User_1.UserModel.findById(userId);
+        const username = req.user.username;
+        // Find user by username instead of userId
+        const user = await User_1.UserModel.findByUsername(username);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -38,8 +38,8 @@ router.post('/result', auth_1.authenticateToken, async (req, res) => {
         // Ensure balance doesn't go negative
         newBalance = Math.max(0, newBalance);
         // Update user in database
-        await User_1.UserModel.updateBalance(userId, newBalance);
-        await User_1.UserModel.updateStats(userId, result === 'win');
+        await User_1.UserModel.updateBalance(user.userId, newBalance);
+        await User_1.UserModel.updateStats(user.userId, result === 'win');
         res.json({
             newBalance,
             gamesWon: newGamesWon,

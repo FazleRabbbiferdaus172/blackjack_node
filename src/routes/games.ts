@@ -8,10 +8,10 @@ const router = express.Router();
 router.post('/result', authenticateToken, async (req: any, res) => {
     try {
         const { result, bet } = req.body;
-        const userId = req.user.userId;
+        const username = req.user.username;
 
-        // Find user
-        const user = await UserModel.findById(userId);
+        // Find user by username instead of userId
+        const user = await UserModel.findByUsername(username);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
@@ -40,8 +40,8 @@ router.post('/result', authenticateToken, async (req: any, res) => {
         newBalance = Math.max(0, newBalance);
 
         // Update user in database
-        await UserModel.updateBalance(userId, newBalance);
-        await UserModel.updateStats(userId, result === 'win');
+        await UserModel.updateBalance(user.userId, newBalance);
+        await UserModel.updateStats(user.userId, result === 'win');
 
         res.json({
             newBalance,
