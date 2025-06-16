@@ -4,15 +4,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const auth_1 = require("../middleware/auth");
 const User_1 = require("../models/User");
 const router = express_1.default.Router();
 // Record game result and update user stats
-router.post('/result', auth_1.authenticateToken, async (req, res) => {
+router.post('/result', async (req, res) => {
     try {
-        const { result, bet } = req.body;
-        const username = req.user.username;
-        // Find user by username instead of userId
+        const { result, bet, username } = req.body;
+        // Find user by username
         const user = await User_1.UserModel.findByUsername(username);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });

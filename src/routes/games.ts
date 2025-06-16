@@ -1,16 +1,14 @@
 import express from 'express';
-import { authenticateToken } from '../middleware/auth';
 import { UserModel } from '../models/User';
 
 const router = express.Router();
 
 // Record game result and update user stats
-router.post('/result', authenticateToken, async (req: any, res) => {
+router.post('/result', async (req: any, res) => {
     try {
-        const { result, bet } = req.body;
-        const username = req.user.username;
+        const { result, bet, username } = req.body;
 
-        // Find user by username instead of userId
+        // Find user by username
         const user = await UserModel.findByUsername(username);
         if (!user) {
             return res.status(404).json({ message: 'User not found' });

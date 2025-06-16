@@ -1,22 +1,13 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import { UserModel } from '../models/User';
-import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
-interface AuthRequest extends express.Request {
-    user?: {
-        userId: string;
-        username: string;
-    };
-}
-
 // Update user profile
-router.put('/profile', authenticateToken, async (req: AuthRequest, res) => {
+router.put('/profile', async (req, res) => {
     try {
-        const { username: currentUsername } = req.user!;
-        const { username } = req.body;
+        const { currentUsername, username } = req.body;
 
         // Check if username is already taken by another user
         const existingUser = await UserModel.findByUsername(username);
@@ -46,10 +37,9 @@ router.put('/profile', authenticateToken, async (req: AuthRequest, res) => {
 });
 
 // Change password
-router.put('/password', authenticateToken, async (req: AuthRequest, res) => {
+router.put('/password', async (req, res) => {
     try {
-        const { username } = req.user!;
-        const { currentPassword, newPassword } = req.body;
+        const { username, currentPassword, newPassword } = req.body;
 
         const user = await UserModel.findByUsername(username);
         if (!user) {
@@ -74,10 +64,9 @@ router.put('/password', authenticateToken, async (req: AuthRequest, res) => {
 });
 
 // Purchase balance
-router.post('/purchase-balance', authenticateToken, async (req: AuthRequest, res) => {
+router.post('/purchase-balance', async (req, res) => {
     try {
-        const { username } = req.user!;
-        const { amount } = req.body;
+        const { username, amount } = req.body;
 
         if (!amount || amount <= 0) {
             return res.status(400).json({ message: 'Invalid amount' });
@@ -103,9 +92,9 @@ router.post('/purchase-balance', authenticateToken, async (req: AuthRequest, res
 });
 
 // Get user balance
-router.get('/balance', authenticateToken, async (req: AuthRequest, res) => {
+router.get('/balance/:username', async (req, res) => {
     try {
-        const { username } = req.user!;
+        const { username } = req.params;
 
         const user = await UserModel.findByUsername(username);
         if (!user) {
