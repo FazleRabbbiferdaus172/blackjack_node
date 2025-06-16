@@ -13,6 +13,8 @@ phases:
     commands:
       - echo Pre-build phase started on `date`
       - echo Setting up environment variables
+      - echo Current directory contents:
+      - ls -la
 
   build:
     commands:
@@ -20,19 +22,29 @@ phases:
       - echo Compiling TypeScript...
       - npm run build
       - echo Creating deployment package...
+      - rm -rf lambda-package
       - mkdir -p lambda-package
       - cp -r dist/* lambda-package/
       - cp -r node_modules lambda-package/
+      - cp package.json lambda-package/
       - cd lambda-package
-      - zip -r ../lambda-deployment.zip .
+      - echo "Package contents:"
+      - ls -la
+      - zip -r ../lambda-deployment.zip . -x "*.git*" "*.DS_Store*"
       - cd ..
       - echo Deployment package created successfully
+      - echo "Package size:" $(du -h lambda-deployment.zip)
 
   post_build:
     commands:
       - echo Post-build phase started on `date`
       - echo Updating Lambda function...
-      - aws lambda update-function-code --function-name blackjack-node-app --zip-file fileb://lambda-deployment.zip --region us-east-2
+      - |
+        aws lambda update-function-code \
+          --function-name blackjack-node-app \
+          --zip-file fileb://lambda-deployment.zip \
+          --region us-east-2 \
+          --output json
       - echo Lambda function updated successfully
       - echo Build completed on `date`
 
