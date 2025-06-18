@@ -1,6 +1,0 @@
-
-> backend@1.0.0 dev
-> ts-node-dev --respawn --transpile-only src/handler.ts
-
-[INFO] 17:28:00 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.8.3)
-Server is running on port 3001
